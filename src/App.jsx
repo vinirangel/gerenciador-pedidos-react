@@ -1,187 +1,223 @@
-import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useState, useEffect } from 'react';
+
+// URL do nosso servidor Node.js local
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/itens';
 
 function App() {
-  // Agora temos apenas uma única lista global de itens
-  const [itens, setItens] = useState([
-    { id: uuidv4(), codigo: '101', descricao: 'Produto Exemplo', ncm: '1234.56.78', qtd: 2, valorUnit: 50.00, total: '100.00' }
-  ]);
-  
+  const [itens, setItens] = useState([]);
   const [busca, setBusca] = useState('');
-  
-  // Configuração de Paginação (Itens por página)
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const itensPorPagina = 5; 
+  const [carregando, setCarregando] = useState(true);
+  const itensPorPagina = 5;
 
-  // Atualização de campos com cálculo automático de total
-  const handleItemChange = (id, campo, valor) => {
-    setItens(prevItens => 
-      prevItens.map(item => {
-        if (item.id === id) {
-          const novoItem = { ...item, [campo]: valor };
-          novoItem.total = (Number(novoItem.qtd) * Number(novoItem.valorUnit)).toFixed(2);
-          return novoItem;
-        }
-        return item;
-      })
-    );
-  };
+  // 1. CARREGAR DADOS DO BANCO: Roda assim que a página abre
+  useEffect(() => {
+    buscarItensDoBanco();
+  }, []);
 
-  // Adiciona um novo item individual à lista
-  const adicionarItem = () => {
-    const novoItem = {
-      id: uuidv4(),
-      codigo: '',
-      descricao: '',
-      ncm: '',
-      qtd: 0,
-      valorUnit: 0,
-      total: '0.00'
-    };
-    setItens([...itens, novoItem]);
-  };
-
-  // Remoção de item com confirmação nativa
-  const removerItem = (id, descricao) => {
-    const confirmar = window.confirm(`Deseja excluir o item "${descricao || 'Sem descrição'}"?`);
-    if (confirmar) {
-      setItens(prevItens => prevItens.filter(item => item.id !== id));
-      // A integração com o backend para exclusão física é disparada aqui
+  const buscarItensDoBanco = async () => {
+    try {
+      setCarregando(true);
+      const resposta = await fetch(API_URL);
+      const dados = await resposta.json();
+      setItens(dados);
+    } catch (erro) {
+      console.error("Erro ao buscar dados do backend:", erro);
+      alert("Não foi possível conectar ao servidor backend.");
+    } finally {
+      setCarregando(false);
     }
   };
 
-  // BUSCA GLOBAL: Verifica se o texto bate com QUALQUER um dos campos do item
-  const itensFiltrados = itens.filter(item => {
-    const termo = busca.toLowerCase();
-    return (
-      item.codigo.toLowerCase().includes(termo) ||
-      item.descricao.toLowerCase().includes(termo) ||
-      item.ncm.toLowerCase().includes(termo) ||
-      item.qtd.toString().includes(termo) ||
-      item.valorUnit.toString().includes(termo) ||
-      item.total.toString().includes(termo)
-    );
-  });
+  // 2. CRIAR ITEM: Gera um registro vazio no estado e gera o UUID no backend/banco
+  const adicionarItem = async () => {
+    const novoItem = {
+      id: Math.random().toString(36).substring(2, 11), // ID temporário único
+      codigo: '',
+      descricao: '',
+      localidade: ''
+    };
 
-  // Cálculo de Índices para a Paginação de Itens
+    try {
+      const resposta = await fetch(`${API_URL}/salvar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoItem)
+      });
+
+      if (resposta.ok) {
+        setItens([...itens, novoItem]);
+      }
+    } catch (erro) {
+      console.error("Erro ao criar item no banco:", erro);
+    }
+  };
+
+  // Atualiza apenas o estado visual enquanto o usuário digita
+  const handleItemChangeVisual = (id, campo, valor) => {
+    setItens(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
+  };
+
+  // 3. SALVAR ALTERAÇÃO: Disparado quando o usuário clica fora do campo (onBlur)
+  const salvarAlteracaoNoBanco = async (itemModificado) => {
+    try {
+      await fetch(`${API_URL}/salvar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(itemModificado)
+      });
+    } catch (erro) {
+      console.error("Erro ao salvar alteração:", erro);
+    }
+  };
+
+  // 4. DELETAR ITEM: Remove da tela e do banco permanentemente
+  const removerItem = async (id, descricaoItem) => {
+    const confirmar = window.confirm(`Deseja realmente excluir permanentemente o item "${descricaoItem || 'Sem descrição'}"?`);
+    
+    if (confirmar) {
+      try {
+        const resposta = await fetch(`${API_URL}/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (resposta.ok) {
+          setItens(prev => prev.filter(item => item.id !== id));
+          
+          const totalItensAposDelecao = itens.length - 1;
+          const maxPaginasAposDelecao = Math.ceil(totalItensAposDelecao / itensPorPagina) || 1;
+          if (paginaAtual > maxPaginasAposDelecao) {
+            setPaginaAtual(maxPaginasAposDelecao);
+          }
+        } else {
+          alert("Erro ao remover o item do banco de dados.");
+        }
+      } catch (erro) {
+        console.error("Erro na requisição de exclusão:", erro);
+      }
+    }
+  };
+
+  // Filtro de busca
+  const itensFiltrados = itens.filter(item =>
+    (item.codigo?.toLowerCase() || '').includes(busca.toLowerCase()) ||
+    (item.descricao?.toLowerCase() || '').includes(busca.toLowerCase()) ||
+    (item.localidade?.toLowerCase() || '').includes(busca.toLowerCase())
+  );
+
+  // Paginação
   const indiceUltimoItem = paginaAtual * itensPorPagina;
   const indicePrimeiroItem = indiceUltimoItem - itensPorPagina;
   const itensDaPaginaAtual = itensFiltrados.slice(indicePrimeiroItem, indiceUltimoItem);
-  const totalPaginas = Math.ceil(itensFiltrados.length / itensPorPagina);
+  const totalPaginas = Math.ceil(itensFiltrados.length / itensPorPagina) || 1;
+
+  if (carregando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-xl font-semibold text-slate-600 animate-pulse">Carregando dados...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-10 text-gray-800 font-sans">
-      <div className="max-w-7xl mx-auto bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-10 font-sans text-slate-800">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-extrabold mb-2 text-blue-600">Gerenciador de Pedidos</h1>
         
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">Gerenciador de Itens</h1>
-        
-        {/* Barra de Busca Global */}
+        {/* Busca */}
         <div className="mb-6">
           <input 
             type="text" 
-            placeholder="🔍 Buscar por código, descrição, NCM, valores..."
-            className="w-full md:w-1/3 p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+            placeholder="🔍 Buscar por Código, Descrição ou Localidade..."
+            className="w-full md:w-2/3 p-4 border border-slate-300 rounded-xl shadow-sm focus:outline-none bg-white text-lg"
             value={busca}
             onChange={(e) => { setBusca(e.target.value); setPaginaAtual(1); }} 
           />
         </div>
 
-        {/* Tabela de Itens Única */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-left border-collapse min-w-[900px]">
-            <thead>
-              <tr className="bg-gray-50 text-gray-700 uppercase text-xs font-semibold tracking-wider border-b border-gray-200">
-                <th className="p-3 w-32">Código</th>
-                <th className="p-3 w-72">Descrição</th> {/* Tamanho fixo estipulado */}
-                <th className="p-3 w-36">NCM</th>
-                <th className="p-3 w-24">Qtd</th>
-                <th className="p-3 w-36">Valor Unit.</th>
-                <th className="p-3 w-36">Total</th>
-                <th className="p-3 w-20 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {itensDaPaginaAtual.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition">
-                  <td className="p-2">
-                    <input type="text" className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none" value={item.codigo} onChange={(e) => handleItemChange(item.id, 'codigo', e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    {/* Alterado de volta para input type="text" com largura controlada */}
-                    <input type="text" className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none truncate" title={item.descricao} value={item.descricao} onChange={(e) => handleItemChange(item.id, 'descricao', e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input type="text" className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none" value={item.ncm} onChange={(e) => handleItemChange(item.id, 'ncm', e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input type="number" className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none" value={item.qtd} onChange={(e) => handleItemChange(item.id, 'qtd', e.target.value)} />
-                  </td>
-                  <td className="p-2">
-                    <input type="number" className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none" value={item.valorUnit} onChange={(e) => handleItemChange(item.id, 'valorUnit', e.target.value)} />
-                  </td>
-                  <td className="p-3 font-medium text-sm text-gray-900">
-                    R$ {item.total}
-                  </td>
-                  <td className="p-2 text-center">
-                    <button 
-                      onClick={() => removerItem(item.id, item.descricao)}
-                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition"
-                      title="Excluir Linha"
-                    >
-                      🗑️
-                    </button>
-                  </td>
+        {/* Tabela Modificada com Distribuição de Espaço Otimizada */}
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden mb-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[1000px] table-fixed">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 uppercase text-sm border-b border-slate-200">
+                  <th className="p-4 w-[15%]">Código</th>
+                  <th className="p-4 w-[55%]">Descrição (Espaço Máximo Ampliado)</th>
+                  <th className="p-4 w-[22%]">Localidade</th>
+                  <th className="p-4 w-[8%] text-center">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200 alignment-top align-top">
+                {itensDaPaginaAtual.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition duration-75">
+                    {/* Campo Código */}
+                    <td className="p-4 align-top">
+                      <input 
+                        type="text" 
+                        className="w-full p-3 border rounded-lg bg-white" 
+                        value={item.codigo} 
+                        onChange={(e) => handleItemChangeVisual(item.id, 'codigo', e.target.value)}
+                        onBlur={() => salvarAlteracaoNoBanco(item)}
+                      />
+                    </td>
+                    
+                    {/* CAMPO DESCRIÇÃO EXPANDIDO AO MÁXIMO POSSÍVEL */}
+                    <td className="p-4 align-top">
+                      <textarea 
+                        rows={3}
+                        placeholder="Digite a descrição"
+                        className="w-full p-3 border rounded-lg resize-y min-h-[46px] max-h-40 font-normal text-slate-700 focus:ring-1 focus:ring-blue-500 bg-white" 
+                        value={item.descricao} 
+                        onChange={(e) => handleItemChangeVisual(item.id, 'descricao', e.target.value)}
+                        onBlur={() => salvarAlteracaoNoBanco(item)}
+                      />
+                    </td>
+                    
+                    {/* Campo Localidade */}
+                    <td className="p-4 align-top">
+                      <input 
+                        type="text" 
+                        className="w-full p-3 border rounded-lg bg-white" 
+                        value={item.localidade} 
+                        onChange={(e) => handleItemChangeVisual(item.id, 'localidade', e.target.value)}
+                        onBlur={() => salvarAlteracaoNoBanco(item)}
+                      />
+                    </td>
+                    
+                    {/* Botão de Excluir */}
+                    <td className="p-4 text-center align-top pt-6">
+                      <button 
+                        onClick={() => removerItem(item.id, item.descricao)} 
+                        className="text-red-600 text-xl p-2 hover:bg-red-50 rounded-full transition"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Botão de Adicionar Item */}
-        <div className="mt-4">
-          <button 
-            onClick={adicionarItem}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow transition"
-          >
+        {/* Paginação e Botão de Adicionar */}
+        <div className="flex justify-between items-center mt-4">
+          <button onClick={adicionarItem} className="bg-blue-600 text-white font-bold px-6 py-3.5 rounded-xl shadow hover:bg-blue-700 transition">
             + Adicionar Novo Item
           </button>
-        </div>
 
-        {/* Paginação de Itens */}
-        {totalPaginas > 1 && (
-          <div className="mt-8 flex justify-center items-center space-x-1">
-            <button 
-              disabled={paginaAtual === 1}
-              onClick={() => setPaginaAtual(prev => prev - 1)}
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white hover:bg-gray-50"
-            >
-              Anterior
-            </button>
-            
+          <div className="flex space-x-1">
             {Array.from({ length: totalPaginas }, (_, index) => (
               <button
                 key={index + 1}
                 onClick={() => setPaginaAtual(index + 1)}
-                className={`px-3 py-1.5 text-sm rounded font-medium transition ${
-                  paginaAtual === index + 1 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`px-4 py-2 rounded-lg font-semibold transition ${paginaAtual === index + 1 ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border text-slate-700 hover:bg-slate-50'}`}
               >
                 {index + 1}
               </button>
             ))}
-
-            <button 
-              disabled={paginaAtual === totalPaginas}
-              onClick={() => setPaginaAtual(prev => prev - 1)}
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white hover:bg-gray-50"
-            >
-              Próxima
-            </button>
           </div>
-        )}
-
+        </div>
       </div>
     </div>
   );
