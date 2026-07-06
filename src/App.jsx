@@ -10,7 +10,7 @@ function App() {
   const [carregando, setCarregando] = useState(true);
   const itensPorPagina = 5;
 
-  // 1. CARREGAR DADOS DO BANCO: Roda assim que a página abre
+  // 1. CARREGAR DADOS DO BANCO
   useEffect(() => {
     buscarItensDoBanco();
   }, []);
@@ -29,10 +29,10 @@ function App() {
     }
   };
 
-  // 2. CRIAR ITEM: Gera um registro vazio no estado e gera o UUID no backend/banco
+  // 2. CRIAR ITEM
   const adicionarItem = async () => {
     const novoItem = {
-      id: Math.random().toString(36).substring(2, 11), // ID temporário único
+      id: Math.random().toString(36).substring(2, 11),
       codigo: '',
       descricao: '',
       localidade: ''
@@ -53,12 +53,11 @@ function App() {
     }
   };
 
-  // Atualiza apenas o estado visual enquanto o usuário digita
   const handleItemChangeVisual = (id, campo, valor) => {
     setItens(prev => prev.map(item => item.id === id ? { ...item, [campo]: valor } : item));
   };
 
-  // 3. SALVAR ALTERAÇÃO: Disparado quando o usuário clica fora do campo (onBlur)
+  // 3. SALVAR ALTERAÇÃO
   const salvarAlteracaoNoBanco = async (itemModificado) => {
     try {
       await fetch(`${API_URL}/salvar`, {
@@ -71,7 +70,7 @@ function App() {
     }
   };
 
-  // 4. DELETAR ITEM: Remove da tela e do banco permanentemente
+  // 4. DELETAR ITEM
   const removerItem = async (id, descricaoItem) => {
     const confirmar = window.confirm(`Deseja realmente excluir permanentemente o item "${descricaoItem || 'Sem descrição'}"?`);
     
@@ -105,11 +104,25 @@ function App() {
     (item.localidade?.toLowerCase() || '').includes(busca.toLowerCase())
   );
 
-  // Paginação
+  // Lógica Matemática da Paginação
   const indiceUltimoItem = paginaAtual * itensPorPagina;
   const indicePrimeiroItem = indiceUltimoItem - itensPorPagina;
   const itensDaPaginaAtual = itensFiltrados.slice(indicePrimeiroItem, indiceUltimoItem);
   const totalPaginas = Math.ceil(itensFiltrados.length / itensPorPagina) || 1;
+
+  // LÓGICA NOVA: Determinar quais os 3 botões exibir (Janela Deslizante)
+  let paginasExibidas = [];
+  if (totalPaginas <= 3) {
+    for (let i = 1; i <= totalPaginas; i++) paginasExibidas.push(i);
+  } else {
+    if (paginaAtual === 1) {
+      paginasExibidas = [1, 2, 3];
+    } else if (paginaAtual === totalPaginas) {
+      paginasExibidas = [totalPaginas - 2, totalPaginas - 1, totalPaginas];
+    } else {
+      paginasExibidas = [paginaAtual - 1, paginaAtual, paginaAtual + 1];
+    }
+  }
 
   if (carregando) {
     return (
@@ -135,23 +148,22 @@ function App() {
           />
         </div>
 
-        {/* Tabela Modificada com Distribuição de Espaço Otimizada */}
+        {/* Tabela */}
         <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden mb-6">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[1000px] table-fixed">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 uppercase text-sm border-b border-slate-200">
-                  <th className="p-4 w-[15%]">Código</th>
-                  <th className="p-4 w-[55%]">Descrição (Espaço Máximo Ampliado)</th>
-                  <th className="p-4 w-[22%]">Localidade</th>
-                  <th className="p-4 w-[8%] text-center">Ações</th>
+                  <th className="p-4 pr-3 w-[15%]">Nº do Pedido</th>
+                  <th className="p-4 px-3 w-[50%]">Descrição</th>
+                  <th className="p-4 pl-10 w-[25%]">Localidade</th>
+                  <th className="p-4 pl-6 w-[10%] text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 alignment-top align-top">
                 {itensDaPaginaAtual.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition duration-75">
-                    {/* Campo Código */}
-                    <td className="p-4 align-top">
+                    <td className="p-4 pr-3 align-top">
                       <input 
                         type="text" 
                         className="w-full p-3 border rounded-lg bg-white" 
@@ -160,9 +172,7 @@ function App() {
                         onBlur={() => salvarAlteracaoNoBanco(item)}
                       />
                     </td>
-                    
-                    {/* CAMPO DESCRIÇÃO EXPANDIDO AO MÁXIMO POSSÍVEL */}
-                    <td className="p-4 align-top">
+                    <td className="p-4 px-3 align-top">
                       <textarea 
                         rows={3}
                         placeholder="Digite a descrição"
@@ -172,9 +182,7 @@ function App() {
                         onBlur={() => salvarAlteracaoNoBanco(item)}
                       />
                     </td>
-                    
-                    {/* Campo Localidade */}
-                    <td className="p-4 align-top">
+                    <td className="p-4 pl-10 align-top">
                       <input 
                         type="text" 
                         className="w-full p-3 border rounded-lg bg-white" 
@@ -183,9 +191,7 @@ function App() {
                         onBlur={() => salvarAlteracaoNoBanco(item)}
                       />
                     </td>
-                    
-                    {/* Botão de Excluir */}
-                    <td className="p-4 text-center align-top pt-6">
+                    <td className="p-4 pl-6 text-center align-top pt-6">
                       <button 
                         onClick={() => removerItem(item.id, item.descricao)} 
                         className="text-red-600 text-xl p-2 hover:bg-red-50 rounded-full transition"
@@ -200,24 +206,50 @@ function App() {
           </div>
         </div>
 
-        {/* Paginação e Botão de Adicionar */}
+        {/* Rodapé: Paginação e Adicionar Item */}
         <div className="flex justify-between items-center mt-4">
           <button onClick={adicionarItem} className="bg-blue-600 text-white font-bold px-6 py-3.5 rounded-xl shadow hover:bg-blue-700 transition">
             + Adicionar Novo Item
           </button>
 
-          <div className="flex space-x-1">
-            {Array.from({ length: totalPaginas }, (_, index) => (
+          <div className="flex items-center space-x-2">
+            {/* Botão Seta para Esquerda (Anterior) */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
+              disabled={paginaAtual === 1}
+              className="px-4 py-2 rounded-lg font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              title="Página Anterior"
+            >
+              &larr;
+            </button>
+
+            {/* Botões Numéricos (Máximo 3) */}
+            {paginasExibidas.map((numero) => (
               <button
-                key={index + 1}
-                onClick={() => setPaginaAtual(index + 1)}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${paginaAtual === index + 1 ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border text-slate-700 hover:bg-slate-50'}`}
+                key={numero}
+                onClick={() => setPaginaAtual(numero)}
+                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  paginaAtual === numero 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                {index + 1}
+                {numero}
               </button>
             ))}
+
+            {/* Botão Seta para Direita (Próxima) */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
+              disabled={paginaAtual === totalPaginas}
+              className="px-4 py-2 rounded-lg font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              title="Próxima Página"
+            >
+              &rarr;
+            </button>
           </div>
         </div>
+
       </div>
     </div>
   );
