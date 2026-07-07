@@ -183,9 +183,10 @@ function App() {
                       />
                     </td>
                     <td className="p-4 pl-10 align-top">
-                      <input 
-                        type="text" 
-                        className="w-full p-3 border rounded-lg bg-white" 
+                      <textarea 
+                        rows={3}
+                        placeholder="Digite a localidade"
+                        className="w-full p-3 border rounded-lg resize-y min-h-[46px] max-h-40 font-normal text-slate-700 focus:ring-1 focus:ring-blue-500 bg-white" 
                         value={item.localidade} 
                         onChange={(e) => handleItemChangeVisual(item.id, 'localidade', e.target.value)}
                         onBlur={() => salvarAlteracaoNoBanco(item)}
