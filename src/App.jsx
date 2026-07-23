@@ -104,13 +104,13 @@ function App() {
     (item.localidade?.toLowerCase() || '').includes(busca.toLowerCase())
   );
 
-  // Lógica Matemática da Paginação
+  // Lógica da Paginação
   const indiceUltimoItem = paginaAtual * itensPorPagina;
   const indicePrimeiroItem = indiceUltimoItem - itensPorPagina;
   const itensDaPaginaAtual = itensFiltrados.slice(indicePrimeiroItem, indiceUltimoItem);
   const totalPaginas = Math.ceil(itensFiltrados.length / itensPorPagina) || 1;
 
-  // LÓGICA NOVA: Determinar quais os 3 botões exibir (Janela Deslizante)
+  // Determina quais os 3 botões exibidos no rodapé (Janela Deslizante)
   let paginasExibidas = [];
   if (totalPaginas <= 3) {
     for (let i = 1; i <= totalPaginas; i++) paginasExibidas.push(i);

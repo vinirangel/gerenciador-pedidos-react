@@ -25,7 +25,7 @@ app.get('/api/itens', async (req, res) => {
   res.json(data);
 });
 
-// ROTA 2: Salvar ou Atualizar um item no Banco de Dados (Persistência Anual)
+// ROTA 2: Salvar ou Atualizar um item no Banco de Dados
 app.post('/api/itens/salvar', async (req, res) => {
   const { id, codigo, descricao, localidade } = req.body;
 

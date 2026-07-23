@@ -1,18 +1,34 @@
-# React + Vite
+# Gerenciador de Pedidos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Uma aplicação web moderna, responsiva e otimizada para gerenciamento de itens com suporte a textos longos, paginação inteligente e persistência em tempo real via Supabase.
+🚀 Funcionalidades
 
-Currently, two official plugins are available:
+    Gerenciamento Completo: Crud permite adicionar, editar, excluir e buscar itens de forma instantânea.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+    Campos Dinâmicos: Caixas de texto expansíveis (textarea) tanto para a Descrição quanto para a Localidade, acomodando entradas massivas de texto.
 
-## React Compiler
+    Design Responsivo: Adaptado para computadores e dispositivos móveis (smartphones e tablets) utilizando Tailwind CSS.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+🛠️ Tecnologias Utilizadas
 
-## Expanding the ESLint configuration
+    Frontend: React (Vite)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# gerenciador-pedidos-react
-Database Password: EJbsDSiloNfuLi1W
+    Estilização: Tailwind CSS
+
+    Backend: Node.js com Express
+
+    Banco de Dados: Supabase (PostgreSQL)
+
+📦 Como Executar o Projeto Localmente
+1. Configurar o Backend
+```
+cd backend
+npm install
+node server.js
+```
+2. Configurar o Frontend
+```
+cd frontend
+npm install
+npm run dev
+```
